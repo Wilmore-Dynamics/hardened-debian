@@ -1,11 +1,11 @@
-# <p align="center">Hardened Debian // Wilmore Dynamics
+# <p align="center">Hardened Debian</p>
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/Wilmore-Dynamics/design/refs/heads/main/assets/logo-cream.svg" width="96" alt="Logo Wilmore Dynamics">
 </p>
 
 <p align="center">
-  <strong>Artisanat Numérique | Sécurisation et optimisation de Debian.</strong>
+  <strong>Sécurisation et optimisation de Debian.</strong>
 </p>
 
 ---
