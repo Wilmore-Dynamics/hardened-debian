@@ -11,6 +11,12 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# À ajouter au début du script après les couleurs
+if ! infocmp "$TERM" >/dev/null 2>&1; then
+    echo -e "${RED}[!] Terminal '$TERM' inconnu. Bascule sur xterm-256color pour l'affichage.${NC}"
+    export TERM=xterm-256color
+fi
+
 # --- Fonctions de Durcissement ---
 
 update_system() {
