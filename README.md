@@ -25,7 +25,7 @@ Réduction de la surface d'attaque par l'artisanat numérique. Ce dépôt fourni
 ## Installation & Usage
 
 ```bash
-git clone [https://github.com/Wilmore-Dynamics/hardened-debian.git](https://github.com/Wilmore-Dynamics/hardened-debian.git)
+git clone https://github.com/Wilmore-Dynamics/hardened-debian.git
 cd hardened-debian
 chmod +x scripts/setup.sh
 sudo ./scripts/setup.sh
