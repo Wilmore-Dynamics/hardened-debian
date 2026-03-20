@@ -44,21 +44,24 @@ sysctl -p /etc/sysctl.d/99-hardened.conf > /dev/null
 
 echo -e "${BOLD}Paramètres réseau sécurisés avec succès.${NC}"
 
-# 4. Sécurisation de SSH
+# --- 4. Sécurisation de SSH (Version Adaptative) ---
 echo -e "${GREEN}[3/5] Configuration du service SSH (Hardening)...${NC}"
 
-# --- SÉCURITÉ WILMORE : Vérification des clés SSH ---
-AUTHORIZED_KEYS="$HOME/.ssh/authorized_keys"
+# Détection de l'utilisateur réel (celui qui a tapé la commande)
+# SUDO_USER est rempli par sudo, sinon on prend USER
+TARGET_USER="${SUDO_USER:-$USER}"
+TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
+AUTHORIZED_KEYS="$TARGET_HOME/.ssh/authorized_keys"
+
+echo -e "Analyse des clés pour l'utilisateur : ${BOLD}$TARGET_USER${NC}"
 
 if [ ! -f "$AUTHORIZED_KEYS" ] || [ ! -s "$AUTHORIZED_KEYS" ]; then
-    echo -e "${RED}⚠ ERREUR CRITIQUE : Aucune clé SSH détectée dans $AUTHORIZED_KEYS${NC}"
-    echo -e "${RED}L'authentification par mot de passe va être désactivée.${NC}"
-    echo -e "${RED}Veuillez ajouter une clé publique avant de relancer le script.${NC}"
+    echo -e "${RED}⚠ ERREUR : Aucune clé SSH valide dans $AUTHORIZED_KEYS${NC}"
+    echo -e "${RED}Action : Ajoutez une clé Ed25519 à $TARGET_USER avant de continuer.${NC}"
     exit 1
 else
-    echo -e "${GREEN}✔ Clé SSH détectée. Poursuite du durcissement...${NC}"
+    echo -e "${GREEN}✔ Clé SSH détectée pour $TARGET_USER. Sécurisation autorisée.${NC}"
 fi
-# --- FIN DE VÉRIFICATION ---
 
 # Sauvegarde et application de la config
 cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
