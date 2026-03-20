@@ -36,7 +36,7 @@ print_logo() {
 
 setup_auto_updates() {
     echo -e "${GREEN}[*] Activation des mises à jour de sécurité (Unattended)...${NC}"
-    apt install unattended-upgrades apt-listchanges -y > /dev/null
+    DEBIAN_FRONTEND=noninteractive apt install unattended-upgrades apt-listchanges -y > /dev/null
     cat > /etc/apt/apt.conf.d/50unattended-upgrades << EOF
 Unattended-Upgrade::Origins-Pattern { "origin=Debian,codename=\${distro_codename},label=Debian-Security"; };
 Unattended-Upgrade::Automatic-Reboot "false";
@@ -120,7 +120,7 @@ hardening_ssh() {
 
 setup_security_apps() {
     echo -e "${GREEN}[*] Configuration Firewall & Fail2Ban...${NC}"
-    apt install ufw -y > /dev/null
+    DEBIAN_FRONTEND=noninteractive apt install ufw -y > /dev/null
     ufw default deny incoming
     ufw default allow outgoing
     
