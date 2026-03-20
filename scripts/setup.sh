@@ -32,7 +32,7 @@ setup_motd() {
     echo -e "${GREEN}[*] Personnalisation de l'accueil Wilmore (MOTD)...${NC}"
     
     cat > /etc/motd << EOF
-$(echo -e "${DARK_GRAY}")
+$(echo -e "${GREEN}")
           .--.          
          (    )         
           '--'          
