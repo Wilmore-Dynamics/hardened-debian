@@ -1,0 +1,16 @@
+# --- Wilmore Dynamics // Fail2ban Configuration ---
+# Emplacement : /etc/fail2ban/jail.local
+
+[DEFAULT]
+# Bannir pendant 1 heure (3600s) après 3 échecs
+bantime  = 3600
+findtime = 600
+maxretry = 3
+
+[sshd]
+enabled  = true
+port     = 2222
+logpath  = %(sshd_log)s
+backend  = %(sshd_backend)s
+# On utilise la protection agressive pour SSH
+mode     = aggressive

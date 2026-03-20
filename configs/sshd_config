@@ -1,0 +1,24 @@
+# --- Wilmore Dynamics // Hardened SSH Configuration ---
+# Emplacement : /etc/ssh/sshd_config.d/wilmore-hardened.conf
+# Note : Debian 13 inclut par défaut tous les fichiers dans ce répertoire.
+
+# 1. Sécurité de base
+Port 2222                 # Changez le port (ex: 2222) pour éviter les bots basiques
+Protocol 2
+AddressFamily inet        # Forcer IPv4 si IPv6 n'est pas utilisé
+
+# 2. Authentification (Le point critique)
+PermitRootLogin no        # Interdire la connexion directe en root (Utiliser sudo)
+MaxAuthTries 3            # Limiter les tentatives avant déconnexion
+PubkeyAuthentication yes  # Autoriser les clés SSH
+PasswordAuthentication no # INTERDIRE les mots de passe (Clés uniquement)
+PermitEmptyPasswords no
+
+# 3. Durcissement des algorithmes (Chiffrement fort uniquement)
+# On privilégie Ed25519 qui est moderne et ultra-sécurisé
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+# 4. Session
+X11Forwarding no          # Désactiver le transfert d'interface graphique
+AllowAgentForwarding no
+IgnoreRhosts yes
