@@ -1,6 +1,6 @@
 #!/bin/bash
 # Hardened Debian // Wilmore Dynamics.
-# Interface CLI - v1.2
+# Interface CLI - v1.3.1 "Signature"
 # Philosophie : Minimalisme, Sécurité, Souveraineté.
 
 set -e 
@@ -9,14 +9,72 @@ set -e
 BOLD='\033[1m'
 GREEN='\033[0;32m'
 RED='\033[0;31m'
+DARK_GRAY='\033[1;30m'
 NC='\033[0m'
 
-if ! infocmp "$TERM" >/dev/null 2>&1; then
-    echo -e "${RED}[!] Terminal '$TERM' inconnu. Bascule sur xterm-256color pour l'affichage.${NC}"
-    export TERM=xterm-256color
-fi
+# --- Identité Visuelle Wilmore ---
+print_logo() {
+    # ASCII Art repensé pour reproduire ton logo SVG
+    echo -e "${DARK_GRAY}"
+    echo "       /   \       "
+    echo "      (     )      "
+    echo "       \ _ /       "
+    echo "  /   \     /   \  "
+    echo " (     )   (     ) "
+    echo "  \ _ /     \ _ /  "
+    echo -e "${NC}"
+    echo -e " ${BOLD}  WILMORE DYNAMICS${NC}"
+    echo -e "  Artisanat Numérique\n"
+}
 
-# --- Fonctions de Durcissement ---
+# --- Nouvelles Fonctions ---
+
+setup_motd() {
+    echo -e "${GREEN}[*] Personnalisation de l'accueil Wilmore (MOTD)...${NC}"
+    
+    # Création du fichier temporaire pour le logo (version compacte)
+    cat > /tmp/motd_wilmore << 'EOF'
+ 
+       / \       
+      (   )      
+       \_/       
+  / \     / \  
+ (   )   (   ) 
+  \_/     \_/  
+EOF
+
+    # Conversion en ANSI et injection dans le fichier officiel
+    echo -e "\033[1;30m$(cat /tmp/motd_wilmore)\033[0m" > /etc/motd
+    echo -e "\n\033[1;37m --- Serveur Sécurisé par Wilmore Dynamics --- \033[0m\n" >> /etc/motd
+    echo -e "\033[1;32m ✔ Noyau durci\033[0m | \033[1;32m ✔ SSH sécurisé\033[0m | \033[1;32m ✔ Firewall actif\033[0m\n" >> /etc/motd
+    rm /tmp/motd_wilmore
+
+    echo -e "${BOLD}✔ MOTD Wilmore Dynamics installé.${NC}"
+}
+
+hardening_anssi() {
+    echo -e "${GREEN}[*] Application des règles ANSSI (Niveau Renforcé)...${NC}"
+    
+    # 1. Restriction dmesg (évite fuite d'infos)
+    echo "kernel.dmesg_restrict = 1" > /etc/sysctl.d/50-anssi.conf
+    
+    # 2. Masquage adresses noyau via kptr_restrict
+    echo "kernel.kptr_restrict = 2" >> /etc/sysctl.d/50-anssi.conf
+    
+    # Application immédiate
+    # On gère l'erreur au cas où on serait sur un LXC qui bloque sysctl
+    sysctl -p /etc/sysctl.d/50-anssi.conf > /dev/null || echo -e "${RED}[!] Note: Restriction sysctl bloquée (LXC?).${NC}"
+    
+    # 3. Permissions strictes sur fichiers sensibles
+    # Seul root peut accéder à son répertoire
+    chmod 700 /root
+    # Fichier de config SSH critique
+    chmod 600 /etc/ssh/sshd_config
+    
+    echo -e "${BOLD}✔ Règles ANSSI appliquées : Système verrouillé.${NC}"
+}
+
+# --- Tes fonctions existantes (modulées) ---
 
 update_system() {
     echo -e "${GREEN}[*] Mise à jour du système...${NC}"
@@ -40,37 +98,45 @@ hardening_kernel() {
 }
 
 hardening_ssh() {
-    echo -e "${GREEN}[*] Configuration du service SSH...${NC}"
+    echo -e "${GREEN}[*] Configuration du service SSH (Hardening)...${NC}"
     TARGET_USER="${SUDO_USER:-$USER}"
     TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
     AUTHORIZED_KEYS="$TARGET_HOME/.ssh/authorized_keys"
 
+    echo -e "Analyse des clés pour l'utilisateur : ${BOLD}$TARGET_USER${NC}"
+
     if [ ! -f "$AUTHORIZED_KEYS" ] || [ ! -s "$AUTHORIZED_KEYS" ]; then
-        echo -e "${RED}⚠ ERREUR : Aucune clé SSH dans $AUTHORIZED_KEYS. Annulation.${NC}"
+        echo -e "${RED}⚠ ERREUR : Aucune clé SSH valide dans $AUTHORIZED_KEYS${NC}"
+        echo -e "${RED}Action : Ajoutez une clé Ed25519 à $TARGET_USER avant de continuer.${NC}"
+        # On utilise return pour stopper la fonction mais pas tout le script
         return 1
+    else
+        echo -e "${GREEN}✔ Clé SSH détectée pour $TARGET_USER. Sécurisation autorisée.${NC}"
     fi
 
+    # Sauvegarde et application de la config
     cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
     mkdir -p /etc/ssh/sshd_config.d/
     cp configs/sshd_config /etc/ssh/sshd_config.d/wilmore-hardened.conf
 
+    # Vérification de la syntaxe avant redémarrage
     if sshd -t; then
         systemctl restart ssh
         echo -e "${BOLD}✔ SSH sécurisé.${NC}"
     else
-        echo -e "${RED}Erreur syntaxe SSH.${NC}"
+        echo -e "${RED}Erreur de syntaxe SSH détectée. Annulation.${NC}"
         return 1
     fi
 }
 
 setup_security_apps() {
     echo -e "${GREEN}[*] Configuration Firewall & Fail2Ban...${NC}"
-    # Firewall
+    # Firewall (UFW)
     apt install ufw -y > /dev/null
     ufw default deny incoming
     ufw default allow outgoing
     
-    # Récupération du port
+    # Récupération dynamique du port SSH depuis la config
     SSH_PORT=$(grep "^Port" /etc/ssh/sshd_config.d/wilmore-hardened.conf | awk '{print $2}')
     SSH_PORT=${SSH_PORT:-2222}
     
@@ -80,48 +146,42 @@ setup_security_apps() {
     # Fail2Ban
     apt install fail2ban -y > /dev/null
     cp configs/jail.local /etc/fail2ban/jail.local
+    # Dynamisation du port dans Fail2ban
     sed -i "s/^port *=.*/port = $SSH_PORT/" /etc/fail2ban/jail.local
     systemctl restart fail2ban
-    echo -e "${BOLD}✔ Sécurité active (UFW + Fail2Ban).${NC}"
-}
-
-show_report() {
-    echo -e "\n${BOLD}📊 RAPPORT DE DURCISSEMENT${NC}"
-    echo "--------------------------------------------------"
-    printf "| %-20s | %-20s |\n" "Composant" "Statut"
-    echo "--------------------------------------------------"
-    printf "| %-20s | ${GREEN}%-20s${NC} |\n" "Utilisateur" "${SUDO_USER:-$USER}"
-    printf "| %-20s | ${GREEN}%-20s${NC} |\n" "État Global" "Hardened"
-    echo "--------------------------------------------------"
+    
+    echo -e "${BOLD}✔ Sécurité active : UFW sur le port $SSH_PORT et Fail2Ban opérationnel.${NC}"
 }
 
 # --- Menu Principal ---
-
 clear
-echo -e "${BOLD}--- Hardened Debian // Wilmore Dynamics ---${NC}"
-echo -e "Interface de gestion de la sécurité\n"
+print_logo
 
 if [[ $EUID -ne 0 ]]; then
    echo -e "${RED}Erreur: Lancez avec sudo.${NC}"
    exit 1
 fi
 
-echo "Sélectionnez une option :"
-echo "1) Full Hardening (Tout automatiser)"
-echo "2) Mise à jour système uniquement"
-echo "3) Sécuriser SSH (Clés + Port)"
-echo "4) Activer Pare-feu & Fail2Ban"
-echo "5) Quitter"
+echo "Sélectionnez votre profil de durcissement :"
+echo "-------------------------------------------"
+echo "1) Full Hardening (Standard Wilmore Dynamics)"
+echo "2) Mode ANSSI (Sécurité Maximale - Serveur critique)"
+echo "3) Mise à jour système uniquement"
+echo "4) Sécuriser SSH uniquement (Clés + Port)"
+echo "5) Installer MOTD Wilmore uniquement"
+echo "6) Quitter"
 echo ""
-read -p "Choix [1-5] : " choice
+read -p "Choix [1-6] : " choice
 
 case $choice in
-    1) update_system; hardening_kernel; hardening_ssh; setup_security_apps; show_report ;;
-    2) update_system ;;
-    3) hardening_ssh ;;
-    4) setup_security_apps ;;
-    5) exit 0 ;;
+    1) update_system; hardening_kernel; hardening_ssh; setup_security_apps; setup_motd ;;
+    2) update_system; hardening_kernel; hardening_ssh; setup_security_apps; hardening_anssi; setup_motd ;;
+    3) update_system ;;
+    4) hardening_ssh ;;
+    5) setup_motd ;;
+    6) exit 0 ;;
     *) echo -e "${RED}Option invalide.${NC}" ;;
 esac
 
 echo -e "\n${BOLD}Opération terminée.${NC}"
+echo -e "Vérifiez votre accès SSH sur le port choisi avant de vous déconnecter."
