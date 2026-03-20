@@ -14,34 +14,37 @@ NC='\033[0m'
 
 # --- Identité Visuelle Wilmore ---
 print_logo() {
-    # ASCII Art repensé pour reproduire ton logo SVG
-    echo -e "${DARK_GRAY}"
-    echo "       /   \       "
-    echo "      (     )      "
-    echo "       \ _ /       "
-    echo "  /   \     /   \  "
-    echo " (     )   (     ) "
-    echo "  \ _ /     \ _ /  "
+    echo -e "${GREEN}"
+    echo "          .--.          "
+    echo "         (    )         "
+    echo "          '--'          "
+    echo "    .--.        .--.    "
+    echo "   (    )      (    )   "
+    echo "    '--'        '--'    "
     echo -e "${NC}"
-    echo -e " ${BOLD}  WILMORE DYNAMICS${NC}"
-    echo -e "  Artisanat Numérique\n"
+    echo -e "${BOLD}      WILMORE DYNAMICS${NC}"
+    echo -e "      Artisanat Numérique\n"
 }
 
 # --- Nouvelles Fonctions ---
 
 setup_motd() {
-    echo -e "${GREEN}[*] Personnalisation de l'accueil Wilmore (MOTD)...${NC}"
+    echo -e "${GREEN}[*] Installation du MOTD Wilmore...${NC}"
     
-    # Création du fichier temporaire pour le logo (version compacte)
-    cat > /tmp/motd_wilmore << 'EOF'
+    cat > /etc/motd << 'EOF'
  
-       / \       
-      (   )      
-       \_/       
-  / \     / \  
- (   )   (   ) 
-  \_/     \_/  
+          .--.          
+         (    )         
+          '--'          
+    .--.        .--.    
+   (    )      (    )   
+    '--'        '--'    
+
+ --- Serveur Sécurisé par Wilmore Dynamics --- 
+ 
 EOF
+    echo -e "${BOLD}✔ MOTD Wilmore Dynamics mis à jour.${NC}"
+}
 
     # Conversion en ANSI et injection dans le fichier officiel
     echo -e "\033[1;30m$(cat /tmp/motd_wilmore)\033[0m" > /etc/motd
