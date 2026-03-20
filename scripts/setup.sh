@@ -29,20 +29,25 @@ print_logo() {
 # --- Nouvelles Fonctions ---
 
 setup_motd() {
-    echo -e "${GREEN}[*] Installation du MOTD Wilmore...${NC}"
+    echo -e "${GREEN}[*] Personnalisation de l'accueil Wilmore (MOTD)...${NC}"
     
-    cat > /etc/motd << 'EOF'
- 
+    cat > /etc/motd << EOF
+$(echo -e "${DARK_GRAY}")
           .--.          
          (    )         
           '--'          
     .--.        .--.    
    (    )      (    )   
     '--'        '--'    
-
+$(echo -e "${NC}")
  --- Serveur Sécurisé par Wilmore Dynamics --- 
  
+ ✔ Noyau durci | ✔ SSH sécurisé | ✔ Firewall actif
 EOF
+
+    echo -e "${BOLD}✔ MOTD Wilmore Dynamics installé.${NC}"
+}
+
     echo -e "${BOLD}✔ MOTD Wilmore Dynamics mis à jour.${NC}"
 }
 
