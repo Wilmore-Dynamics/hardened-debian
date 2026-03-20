@@ -1,6 +1,6 @@
 #!/bin/bash
 # Hardened Debian // Wilmore Dynamics.
-# Interface CLI - v1.3.1 "Signature"
+# Interface CLI - v1.4 "Interactive & ANSSI+"
 # Philosophie : Minimalisme, Sécurité, Souveraineté.
 
 set -e 
@@ -12,8 +12,14 @@ RED='\033[0;31m'
 DARK_GRAY='\033[1;30m'
 NC='\033[0m'
 
+# Correction Terminal pour Kitty/SSH
+if ! infocmp "$TERM" >/dev/null 2>&1; then
+    export TERM=xterm-256color
+fi
+
 # --- Identité Visuelle Wilmore ---
 print_logo() {
+    clear
     echo -e "${GREEN}"
     echo "          .--.          "
     echo "         (    )         "
@@ -28,9 +34,18 @@ print_logo() {
 
 # --- Fonctions de Durcissement ---
 
+setup_auto_updates() {
+    echo -e "${GREEN}[*] Activation des mises à jour de sécurité (Unattended)...${NC}"
+    apt install unattended-upgrades apt-listchanges -y > /dev/null
+    cat > /etc/apt/apt.conf.d/50unattended-upgrades << EOF
+Unattended-Upgrade::Origins-Pattern { "origin=Debian,codename=\${distro_codename},label=Debian-Security"; };
+Unattended-Upgrade::Automatic-Reboot "false";
+EOF
+    echo -e "${BOLD}✔ Mises à jour auto configurées.${NC}"
+}
+
 setup_motd() {
-    echo -e "${GREEN}[*] Personnalisation de l'accueil Wilmore (MOTD)...${NC}"
-    
+    echo -e "${GREEN}[*] Installation du MOTD Wilmore...${NC}"
     cat > /etc/motd << EOF
 $(echo -e "${GREEN}")
           .--.          
@@ -44,27 +59,18 @@ $(echo -e "${NC}")
  
  ✔ Noyau durci | ✔ SSH sécurisé | ✔ Firewall actif
 EOF
-
     echo -e "${BOLD}✔ MOTD Wilmore Dynamics installé.${NC}"
 }
 
 hardening_anssi() {
     echo -e "${GREEN}[*] Application des règles ANSSI (Niveau Renforcé)...${NC}"
-    
-    # 1. Restriction dmesg
     echo "kernel.dmesg_restrict = 1" > /etc/sysctl.d/50-anssi.conf
-    
-    # 2. Masquage adresses noyau
     echo "kernel.kptr_restrict = 2" >> /etc/sysctl.d/50-anssi.conf
-    
-    # Application (gestion d'erreur LXC)
-    sysctl -p /etc/sysctl.d/50-anssi.conf > /dev/null || echo -e "${RED}[!] Note: Restriction sysctl bloquée (LXC?).${NC}"
-    
-    # 3. Permissions strictes
+    sysctl -p /etc/sysctl.d/50-anssi.conf > /dev/null || echo -e "${RED}[!] Restriction sysctl limitée (LXC).${NC}"
     chmod 700 /root
     chmod 600 /etc/ssh/sshd_config
-    
-    echo -e "${BOLD}✔ Règles ANSSI appliquées : Système verrouillé.${NC}"
+    setup_auto_updates
+    echo -e "${BOLD}✔ Règles ANSSI & Auto-updates appliquées.${NC}"
 }
 
 update_system() {
@@ -93,8 +99,6 @@ hardening_ssh() {
     TARGET_USER="${SUDO_USER:-$USER}"
     TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
     AUTHORIZED_KEYS="$TARGET_HOME/.ssh/authorized_keys"
-
-    echo -e "Analyse des clés pour : ${BOLD}$TARGET_USER${NC}"
 
     if [ ! -f "$AUTHORIZED_KEYS" ] || [ ! -s "$AUTHORIZED_KEYS" ]; then
         echo -e "${RED}⚠ ERREUR : Aucune clé SSH valide dans $AUTHORIZED_KEYS${NC}"
@@ -134,35 +138,37 @@ setup_security_apps() {
     echo -e "${BOLD}✔ Sécurité active (Port $SSH_PORT).${NC}"
 }
 
-# --- Menu Principal ---
-clear
-print_logo
+# --- Boucle Interactive ---
 
 if [[ $EUID -ne 0 ]]; then
    echo -e "${RED}Erreur: Lancez avec sudo.${NC}"
    exit 1
 fi
 
-echo "Sélectionnez votre profil de durcissement :"
-echo "-------------------------------------------"
-echo "1) Full Hardening (Standard Wilmore Dynamics)"
-echo "2) Mode ANSSI (Sécurité Maximale - Serveur critique)"
-echo "3) Mise à jour système uniquement"
-echo "4) Sécuriser SSH uniquement (Clés + Port)"
-echo "5) Installer MOTD Wilmore uniquement"
-echo "6) Quitter"
-echo ""
-read -p "Choix [1-6] : " choice
+RUNNING=true
+while [ "$RUNNING" = true ]; do
+    print_logo
+    echo "Sélectionnez une option de durcissement :"
+    echo "-------------------------------------------"
+    echo "1) Full Hardening (Standard Wilmore)"
+    echo "2) Mode ANSSI (Max + Mises à jour auto)"
+    echo "3) Mise à jour système uniquement"
+    echo "4) Sécuriser SSH uniquement"
+    echo "5) Installer le MOTD Wilmore"
+    echo "6) QUITTER"
+    echo ""
+    read -p "Choix [1-6] : " choice
 
-case $choice in
-    1) update_system; hardening_kernel; hardening_ssh; setup_security_apps; setup_motd ;;
-    2) update_system; hardening_kernel; hardening_ssh; setup_security_apps; hardening_anssi; setup_motd ;;
-    3) update_system ;;
-    4) hardening_ssh ;;
-    5) setup_motd ;;
-    6) exit 0 ;;
-    *) echo -e "${RED}Option invalide.${NC}" ;;
-esac
+    case $choice in
+        1) update_system; hardening_kernel; hardening_ssh; setup_security_apps; setup_motd; read -p "Terminé. Entrée pour continuer..." ;;
+        2) update_system; hardening_kernel; hardening_ssh; setup_security_apps; hardening_anssi; setup_motd; read -p "Terminé. Entrée pour continuer..." ;;
+        3) update_system; read -p "Terminé. Entrée pour continuer..." ;;
+        4) hardening_ssh; read -p "Terminé. Entrée pour continuer..." ;;
+        5) setup_motd; read -p "Terminé. Entrée pour continuer..." ;;
+        6) RUNNING=false ;;
+        *) echo -e "${RED}Option invalide.${NC}"; sleep 1 ;;
+    esac
+done
 
-echo -e "\n${BOLD}Opération terminée.${NC}"
-echo -e "Vérifiez votre accès SSH sur le port choisi avant de vous déconnecter."
+clear
+echo -e "${BOLD}Merci d'avoir utilisé les outils Wilmore Dynamics.${NC}"
