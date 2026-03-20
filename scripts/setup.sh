@@ -31,7 +31,6 @@ print_logo() {
 setup_motd() {
     echo -e "${GREEN}[*] Personnalisation de l'accueil Wilmore (MOTD)...${NC}"
     
-    # Écriture directe et sécurisée dans /etc/motd
     cat > /etc/motd << EOF
 $(echo -e "${DARK_GRAY}")
           .--.          
