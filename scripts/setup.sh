@@ -1,6 +1,6 @@
 #!/bin/bash
 # Hardened Debian // Wilmore Dynamics.
-# Interface CLI - v1.4 "Interactive & ANSSI+"
+# Interface CLI - v1.4.2 "Emerald"
 # Philosophie : Minimalisme, Sécurité, Souveraineté.
 
 set -e 
@@ -9,7 +9,6 @@ set -e
 BOLD='\033[1m'
 GREEN='\033[0;32m'
 RED='\033[0;31m'
-DARK_GRAY='\033[1;30m'
 NC='\033[0m'
 
 # Correction Terminal pour Kitty/SSH
@@ -17,7 +16,7 @@ if ! infocmp "$TERM" >/dev/null 2>&1; then
     export TERM=xterm-256color
 fi
 
-# --- Identité Visuelle Wilmore ---
+# --- Identité Visuelle ---
 print_logo() {
     clear
     echo -e "${GREEN}"
@@ -27,21 +26,20 @@ print_logo() {
     echo "    .--.        .--.    "
     echo "   (    )      (    )   "
     echo "    '--'        '--'    "
-    echo -e "${NC}"
     echo -e "${BOLD}      WILMORE DYNAMICS${NC}"
-    echo -e "      Artisanat Numérique\n"
+    echo -e "${GREEN}      Artisanat Numérique${NC}\n"
 }
 
 # --- Fonctions de Durcissement ---
 
 setup_auto_updates() {
     echo -e "${GREEN}[*] Activation des mises à jour de sécurité (Unattended)...${NC}"
-    DEBIAN_FRONTEND=noninteractive apt install unattended-upgrades apt-listchanges -y > /dev/null
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq unattended-upgrades apt-listchanges > /dev/null
     cat > /etc/apt/apt.conf.d/50unattended-upgrades << EOF
 Unattended-Upgrade::Origins-Pattern { "origin=Debian,codename=\${distro_codename},label=Debian-Security"; };
 Unattended-Upgrade::Automatic-Reboot "false";
 EOF
-    echo -e "${BOLD}✔ Mises à jour auto configurées.${NC}"
+    echo -e "${GREEN}${BOLD}✔ Mises à jour auto configurées.${NC}"
 }
 
 setup_motd() {
@@ -54,12 +52,12 @@ $(echo -e "${GREEN}")
     .--.        .--.    
    (    )      (    )   
     '--'        '--'    
-$(echo -e "${NC}")
+
  --- Serveur Sécurisé par Wilmore Dynamics --- 
- 
+$(echo -e "${NC}")
  ✔ Noyau durci | ✔ SSH sécurisé | ✔ Firewall actif
 EOF
-    echo -e "${BOLD}✔ MOTD Wilmore Dynamics installé.${NC}"
+    echo -e "${GREEN}${BOLD}✔ MOTD Wilmore Dynamics installé.${NC}"
 }
 
 hardening_anssi() {
@@ -70,13 +68,15 @@ hardening_anssi() {
     chmod 700 /root
     chmod 600 /etc/ssh/sshd_config
     setup_auto_updates
-    echo -e "${BOLD}✔ Règles ANSSI & Auto-updates appliquées.${NC}"
+    echo -e "${GREEN}${BOLD}✔ Règles ANSSI & Auto-updates appliquées.${NC}"
 }
 
 update_system() {
     echo -e "${GREEN}[*] Mise à jour du système...${NC}"
-    apt update && apt full-upgrade -y
-    apt autoremove -y && apt autoclean
+    DEBIAN_FRONTEND=noninteractive apt-get update -qq
+    DEBIAN_FRONTEND=noninteractive apt-get full-upgrade -y -qq
+    apt-get autoremove -y -qq && apt-get autoclean -qq
+    echo -e "${GREEN}${BOLD}✔ Système à jour.${NC}"
 }
 
 hardening_kernel() {
@@ -87,7 +87,7 @@ hardening_kernel() {
         if [ -f "configs/sysctl.conf" ]; then
             cp configs/sysctl.conf /etc/sysctl.d/99-hardened.conf
             sysctl -p /etc/sysctl.d/99-hardened.conf > /dev/null
-            echo -e "${BOLD}✔ Paramètres réseau sécurisés.${NC}"
+            echo -e "${GREEN}${BOLD}✔ Paramètres réseau sécurisés.${NC}"
         else
             echo -e "${RED}Erreur : configs/sysctl.conf introuvable.${NC}"
         fi
@@ -111,7 +111,7 @@ hardening_ssh() {
 
     if sshd -t; then
         systemctl restart ssh
-        echo -e "${BOLD}✔ SSH sécurisé.${NC}"
+        echo -e "${GREEN}${BOLD}✔ SSH sécurisé.${NC}"
     else
         echo -e "${RED}Erreur syntaxe SSH. Annulation.${NC}"
         return 1
@@ -120,7 +120,7 @@ hardening_ssh() {
 
 setup_security_apps() {
     echo -e "${GREEN}[*] Configuration Firewall & Fail2Ban...${NC}"
-    DEBIAN_FRONTEND=noninteractive apt install ufw -y > /dev/null
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ufw fail2ban > /dev/null
     ufw default deny incoming
     ufw default allow outgoing
     
@@ -130,12 +130,11 @@ setup_security_apps() {
     ufw allow "$SSH_PORT"/tcp comment 'Custom SSH Port'
     ufw --force enable
     
-    apt install fail2ban -y > /dev/null
     cp configs/jail.local /etc/fail2ban/jail.local
     sed -i "s/^port *=.*/port = $SSH_PORT/" /etc/fail2ban/jail.local
     systemctl restart fail2ban
     
-    echo -e "${BOLD}✔ Sécurité active (Port $SSH_PORT).${NC}"
+    echo -e "${GREEN}${BOLD}✔ Sécurité active (Port $SSH_PORT).${NC}"
 }
 
 # --- Boucle Interactive ---
@@ -148,7 +147,7 @@ fi
 RUNNING=true
 while [ "$RUNNING" = true ]; do
     print_logo
-    echo "Sélectionnez une option de durcissement :"
+    echo -e "${BOLD}Menu de Gestion de la Sécurité${NC}"
     echo "-------------------------------------------"
     echo "1) Full Hardening (Standard Wilmore)"
     echo "2) Mode ANSSI (Max + Mises à jour auto)"
@@ -160,15 +159,15 @@ while [ "$RUNNING" = true ]; do
     read -p "Choix [1-6] : " choice
 
     case $choice in
-        1) update_system; hardening_kernel; hardening_ssh; setup_security_apps; setup_motd; read -p "Terminé. Entrée pour continuer..." ;;
-        2) update_system; hardening_kernel; hardening_ssh; setup_security_apps; hardening_anssi; setup_motd; read -p "Terminé. Entrée pour continuer..." ;;
-        3) update_system; read -p "Terminé. Entrée pour continuer..." ;;
-        4) hardening_ssh; read -p "Terminé. Entrée pour continuer..." ;;
-        5) setup_motd; read -p "Terminé. Entrée pour continuer..." ;;
+        1) update_system; hardening_kernel; hardening_ssh; setup_security_apps; setup_motd; echo ""; read -p "Entrée pour revenir au menu..." ;;
+        2) update_system; hardening_kernel; hardening_ssh; setup_security_apps; hardening_anssi; setup_motd; echo ""; read -p "Entrée pour revenir au menu..." ;;
+        3) update_system; echo ""; read -p "Entrée pour revenir au menu..." ;;
+        4) hardening_ssh; echo ""; read -p "Entrée pour revenir au menu..." ;;
+        5) setup_motd; echo ""; read -p "Entrée pour revenir au menu..." ;;
         6) RUNNING=false ;;
         *) echo -e "${RED}Option invalide.${NC}"; sleep 1 ;;
     esac
 done
 
 clear
-echo -e "${BOLD}Merci d'avoir utilisé les outils Wilmore Dynamics.${NC}"
+echo -e "${GREEN}${BOLD}Wilmore Dynamics : Sécurité appliquée avec succès.${NC}"
