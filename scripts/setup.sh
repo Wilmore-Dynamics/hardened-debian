@@ -1,6 +1,6 @@
 #!/bin/bash
 # Hardened Debian // Wilmore Dynamics.
-# Interface CLI - v1.4.2 "Emerald"
+# Interface CLI - v1.4.3 "Souveraineté Totale"
 # Philosophie : Minimalisme, Sécurité, Souveraineté.
 
 set -e 
@@ -137,6 +137,31 @@ setup_security_apps() {
     echo -e "${GREEN}${BOLD}✔ Sécurité active (Port $SSH_PORT).${NC}"
 }
 
+uninstall_wilmore() {
+    echo -e "${RED}[!] Restauration des paramètres d'origine Debian...${NC}"
+    
+    # 1. SSH
+    if [ -f "/etc/ssh/sshd_config.d/wilmore-hardened.conf" ]; then
+        rm /etc/ssh/sshd_config.d/wilmore-hardened.conf
+        systemctl restart ssh
+        echo -e "${BOLD}✔ SSH réinitialisé (Port 22).${NC}"
+    fi
+
+    # 2. Sécurité
+    ufw disable > /dev/null || true
+    systemctl stop fail2ban || true
+    systemctl disable fail2ban || true
+    echo -e "${BOLD}✔ Firewall et Fail2Ban désactivés.${NC}"
+
+    # 3. Mises à jour & Nettoyage
+    apt-get purge -y -qq unattended-upgrades apt-listchanges > /dev/null || true
+    echo "" > /etc/motd
+    rm -f /etc/sysctl.d/99-hardened.conf /etc/sysctl.d/50-anssi.conf
+    sysctl --system > /dev/null
+    
+    echo -e "${GREEN}${BOLD}✔ Wilmore Dynamics a quitté l'atelier. Système restauré.${NC}"
+}
+
 # --- Boucle Interactive ---
 
 if [[ $EUID -ne 0 ]]; then
@@ -154,9 +179,10 @@ while [ "$RUNNING" = true ]; do
     echo "3) Mise à jour système uniquement"
     echo "4) Sécuriser SSH uniquement"
     echo "5) Installer le MOTD Wilmore"
-    echo "6) QUITTER"
+    echo "6) DÉSINSTALLER / RESTAURER LE SYSTÈME"
+    echo "7) QUITTER"
     echo ""
-    read -p "Choix [1-6] : " choice
+    read -p "Choix [1-7] : " choice
 
     case $choice in
         1) update_system; hardening_kernel; hardening_ssh; setup_security_apps; setup_motd; echo ""; read -p "Entrée pour revenir au menu..." ;;
@@ -164,10 +190,11 @@ while [ "$RUNNING" = true ]; do
         3) update_system; echo ""; read -p "Entrée pour revenir au menu..." ;;
         4) hardening_ssh; echo ""; read -p "Entrée pour revenir au menu..." ;;
         5) setup_motd; echo ""; read -p "Entrée pour revenir au menu..." ;;
-        6) RUNNING=false ;;
+        6) uninstall_wilmore; echo ""; read -p "Entrée pour revenir au menu..." ;;
+        7) RUNNING=false ;;
         *) echo -e "${RED}Option invalide.${NC}"; sleep 1 ;;
     esac
 done
 
 clear
-echo -e "${GREEN}${BOLD}Wilmore Dynamics : Sécurité appliquée avec succès.${NC}"
+echo -e "${GREEN}${BOLD}Moins, mais mieux. À bientôt l'artisan.${NC}"
