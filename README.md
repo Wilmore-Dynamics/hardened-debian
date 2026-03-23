@@ -14,7 +14,7 @@
 
 Réduction de la surface d'attaque par l'artisanat numérique. Ce dépôt fournit une **interface CLI interactive** pour déployer une base souveraine, minimaliste et rigoureusement durcie.
 
-## Capacités v1.4.2 "Emerald"
+## Capacités v1.4.3 "Emerald"
 
 - **Console Interactive :** Menu de gestion persistant pour un déploiement modulaire.
 - **Mode ANSSI :** Durcissement des privilèges et isolation du noyau (LXC friendly).
